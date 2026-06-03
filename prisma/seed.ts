@@ -1,6 +1,8 @@
 import bcrypt from "bcryptjs";
-import { prisma } from "../src/db/prisma.js";
+import { PrismaClient } from "@prisma/client";
 import { hashPassword } from "../src/utils/auth.js";
+
+const prisma = new PrismaClient();
 
 await prisma.user.create({
   data: {
