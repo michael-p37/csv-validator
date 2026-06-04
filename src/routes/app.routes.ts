@@ -1,22 +1,26 @@
 import { requireAuth } from "@/middlewares/auth.middleware.js";
 import { requireRole } from "@/middlewares/role.middleware.js";
+import { render } from "@/renderApp";
 import { Router } from "express";
 
 const router = Router();
 
 // 🔓 pública
 router.get("/", (req, res) => {
-  res.send("index");
+  const html = render(req.url);
+  res.send(html);
 });
 
 // 🔒 usuario logueado
 router.get("/dashboard", requireAuth, (req, res) => {
-  res.send("dashboard");
+  const html = render(req.url);
+  res.send(html);
 });
 
 // 👑 solo admin
 router.get( "/admin", requireAuth, requireRole("ADMIN"), (req, res) => {
-    res.send("admin");
+    const html = render(req.url);
+    res.send(html);
   }
 );
 
