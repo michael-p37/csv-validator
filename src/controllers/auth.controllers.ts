@@ -13,35 +13,45 @@ export const authController = {
       const user = await userService.findUserByEmail(email);
 
       if (!user) {
-        throw new Error(
-          "Correo electrónico o contraseña inválidos"
-        );
+        return res.sendStatus(401).send("Correo electrónico o contraseña inválidos");
       }
 
       if (!user.password) {
-        throw new Error(
-          "Correo electrónico o contraseña inválidos"
-        );
+        return res.sendStatus(401).send("Correo electrónico o contraseña inválidos");
       }
 
       const isValidPassword = await comparePassword(password, user.password);
 
       if (!isValidPassword) {
-        throw new Error(
-          "Correo electrónico o contraseña inválidos"
-        );
+        return res.sendStatus(401).send("Correo electrónico o contraseña inválidos");
       }
 
+      // guardando datos en sesión
       req.session.userId = user.id;
       req.session.role = user.role;
 
       await saveSession(req);
 
-      res.redirect("/");
+      return res.status(200).json({ ok: true, redirect: "/dashboard" });
+
     } catch (error) {
       return next(error);
     }
-  
-    res.redirect("/dashboard");
-  }
+  },
+
+  async logout(req: Request, res: Response, next: NextFunction) {
+    try {
+      req.session.destroy((err) => {
+        if (err) {
+          return next(err instanceof Error ? err : new Error(String(err)));
+        }
+      })
+
+      res.clearCookie("connect.sid");
+
+      return res.status(200).json({ ok: true, redirect: "/login" });
+    } catch (error) {
+      return next(error);
+    }
+  },
 }
