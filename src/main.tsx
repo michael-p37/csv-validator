@@ -1,12 +1,10 @@
 import { StrictMode } from "react";
 import { hydrateRoot } from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
-import App from "./App";
+import { BrowserRouter, createBrowserRouter, RouterProvider } from "react-router-dom";
+import { routes } from "./router";
+
+const router = createBrowserRouter(routes);
 hydrateRoot(
   document.getElementById("root")!,
-  <StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  </StrictMode>
+  <RouterProvider router={router} />
 );
