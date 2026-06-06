@@ -3,7 +3,7 @@ import { loginSchema } from "@/schemas/auth.schema.js";
 import { userService } from "@/services/user.service.js";
 import { comparePassword } from "@/utils/auth.js";
 import type { NextFunction, Request, Response } from "express";
-import { ca, tr } from "zod/locales";
+// Removed unused locale imports from zod.
 
 export const authController = {
   async login(req: Request, res: Response, next: NextFunction) {
@@ -13,17 +13,17 @@ export const authController = {
       const user = await userService.findUserByEmail(email);
 
       if (!user) {
-        return res.sendStatus(401).send("Correo electrónico o contraseña inválidos");
+        return res.status(401).send("Correo electrónico o contraseña inválidos");
       }
 
       if (!user.password) {
-        return res.sendStatus(401).send("Correo electrónico o contraseña inválidos");
+        return res.status(401).send("Correo electrónico o contraseña inválidos");
       }
 
       const isValidPassword = await comparePassword(password, user.password);
 
       if (!isValidPassword) {
-        return res.sendStatus(401).send("Correo electrónico o contraseña inválidos");
+        return res.status(401).send("Correo electrónico o contraseña inválidos");
       }
 
       // guardando datos en sesión
@@ -32,7 +32,7 @@ export const authController = {
 
       await saveSession(req);
 
-      return res.status(200).json({ ok: true, redirect: "/dashboard" });
+      return res.status(200).json({ ok: true, redirect: "/upload" });
 
     } catch (error) {
       return next(error);
@@ -45,11 +45,10 @@ export const authController = {
         if (err) {
           return next(err instanceof Error ? err : new Error(String(err)));
         }
-      })
-
-      res.clearCookie("connect.sid");
-
-      return res.status(200).json({ ok: true, redirect: "/login" });
+        res.clearCookie("connect.sid");
+        
+        return res.status(200).json({ ok: true, redirect: "/login" });
+      });
     } catch (error) {
       return next(error);
     }
