@@ -6,3 +6,9 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   }
   next();
 }
+export function resdirectIfAuthenticated(req: Request, res: Response, next: NextFunction) {
+  if (req.session.userId) {
+    return res.redirect("/upload");
+  }
+  next();
+}
