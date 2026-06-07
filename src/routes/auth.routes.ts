@@ -1,25 +1,11 @@
 import { authController } from "@/controllers/auth.controllers.js";
-import { render } from "@/entry-server";
-import fs from "fs"
 import { requireAuth, resdirectIfAuthenticated } from "@/middlewares/auth.middleware";
-import { Router, type Request, type Response } from "express";
-import path from "path";
+import { Router, type NextFunction, type Request, type Response } from "express";
 
 const router = Router();
 
-router.get("/", resdirectIfAuthenticated, async (req: Request, res: Response) => {
-  const appHtml = await render(req.url);
-  const template = fs.readFileSync(
-    path.resolve("dist/client/index.html"),
-    "utf-8"
-  );
-
-  const finalHtml = template.replace(
-    "<!--app-html-->",
-    typeof appHtml === "string" ? appHtml : ""
-  );
-
-  res.send(finalHtml)
+router.get("/", resdirectIfAuthenticated, (req, res, next) => {
+  next();
 })
 
 router.post("/login", resdirectIfAuthenticated, authController.login);

@@ -1,25 +1,62 @@
 import express, { type NextFunction, type Request, type Response } from "express";
-import authRoutes from "./routes/auth.routes.js";
-import appRoutes from "./routes/app.routes.js";
+import authRoutes from "../src/routes/auth.routes.js";
+import appRoutes from "../src/routes/app.routes.js";
 import fs from "fs";
 import path from "path";  
-import { sessionConfig } from "./config/session.js";
-import { render } from "./entry-server.js";
+import { sessionConfig } from "../src/config/session.js";
+import {createServer as createViteServer } from "vite";
+
+const isProduction = process.env.NODE_ENV === "production";
 const PORT = process.env.PORT || 3000;
 
 const app = express();
+console.log("SERVER BOOT", Date.now());
+console.log("NODE_ENV =", process.env.NODE_ENV);
+console.log("IS_PRODUCTION =", isProduction);
 
 // Development-friendly Content Security Policy to allow local assets (overrides external CSP)
-app.use((req, res, next) => {
-  res.setHeader(
-    "Content-Security-Policy",
-    "default-src 'self'; img-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';"
-  );
-  next();
-});
+if (isProduction) {
+  app.use((req, res, next) => {
+    res.setHeader(
+      "Content-Security-Policy",
+      "default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline';"
+    );
+    next();
+  });
+} else {
+  app.use((req, res, next) => {
+    res.setHeader(
+      "Content-Security-Policy",
+      [
+      "default-src 'self'",
+      "connect-src 'self' ws: wss: http: https:",
+      "img-src 'self' data: blob:",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:",
+      "style-src 'self' 'unsafe-inline'",
+      "worker-src 'self' blob:"
+    ].join("; ")
+    );
+    next();
+  });
+}
 
-// Serve only static assets; disable serving index.html so SSR can inject the page
-app.use(express.static("dist/client", { index: false }));
+let vite: any;
+
+if (isProduction) {
+  app.use(express.static("dist/client", { index: false }));
+} else {
+  vite = await createViteServer({
+    server: {
+      middlewareMode: true,
+    },
+    appType: "custom",
+  });
+
+  console.log("VITE CREATED");
+
+  app.use(vite.middlewares);
+  console.log("VITE MIDDLEWARE MOUNTED");
+}
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -30,12 +67,37 @@ app.use(authRoutes);
 app.use(appRoutes);
 
 async function renderPageRoute(req: Request, res: Response, next: NextFunction) {
+  let render;
+  
+  if (isProduction) {
+    render = (await import("../src/entry-server.js")).render;
+  } else {
+    render = (
+      await vite.ssrLoadModule(
+        "/src/entry-server.tsx"
+      )
+    ).render;
+  }
+  
   const result =await render(req.url);
+  let template: string;
 
-  const template = fs.readFileSync(
-    path.resolve("dist/client/index.html"),
-    "utf-8"
-  );
+  if (isProduction) {
+    template = fs.readFileSync(
+      path.resolve("dist/client/index.html"),
+      "utf-8"
+    );
+  } else {
+    template = fs.readFileSync(
+      path.resolve("index.html"),
+      "utf-8"
+    );
+
+    template = await vite.transformIndexHtml(
+      req.originalUrl,
+      template
+    );
+  }
 
   if (result instanceof Response) {
     const location = result.headers.get("Location");
@@ -51,7 +113,7 @@ async function renderPageRoute(req: Request, res: Response, next: NextFunction) 
     "<!--app-html-->",
     result
   );
-  
+
   return res.status(200).send(finalHtml);
 }
 app.get("/", renderPageRoute);
