@@ -4,16 +4,12 @@ import appRoutes from "../src/routes/app.routes.js";
 import fs from "fs";
 import path from "path";  
 import { sessionConfig } from "../src/config/session.js";
-import {createServer as createViteServer } from "vite";
+import {createServer as createViteServer, type ViteDevServer } from "vite";
 
 const isProduction = process.env.NODE_ENV === "production";
 const PORT = process.env.PORT || 3000;
 
 const app = express();
-console.log("SERVER BOOT", Date.now());
-console.log("NODE_ENV =", process.env.NODE_ENV);
-console.log("IS_PRODUCTION =", isProduction);
-
 // Development-friendly Content Security Policy to allow local assets (overrides external CSP)
 if (isProduction) {
   app.use((req, res, next) => {
@@ -40,7 +36,7 @@ if (isProduction) {
   });
 }
 
-let vite: any;
+let vite: ViteDevServer;
 
 if (isProduction) {
   app.use(express.static("dist/client", { index: false }));
@@ -51,11 +47,7 @@ if (isProduction) {
     },
     appType: "custom",
   });
-
-  console.log("VITE CREATED");
-
   app.use(vite.middlewares);
-  console.log("VITE MIDDLEWARE MOUNTED");
 }
 
 app.use(express.urlencoded({ extended: true }));
@@ -67,6 +59,10 @@ app.use(authRoutes);
 app.use(appRoutes);
 
 async function renderPageRoute(req: Request, res: Response, next: NextFunction) {
+  if (req.session.userId && (req.path === "/" || req.path === "/login")) {
+    return res.redirect("/upload");
+  }
+
   let render;
   
   if (isProduction) {

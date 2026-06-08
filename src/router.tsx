@@ -4,7 +4,7 @@ import { UploadPage } from "./pages/UploadPage";
 import { AdminPage } from "./pages/AdminPage";
 import { CorrectionPage } from "./pages/CorrectionPage";
 import AppLayout from "./AppLayout";
-import { createBrowserRouter, type RouteObject } from "react-router-dom";
+import { type RouteObject } from "react-router-dom";
 
 export const routeObjects: RouteObject[] = [
   {
