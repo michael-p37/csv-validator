@@ -5,9 +5,9 @@ export default function NavBar() {
     <header className="site-header">
       <div className="site-header-inner">
         <div className="brand-group">
-          <Link to="/" className="site-brand">
+          <h1 className="site-brand">
             CSV Validator
-          </Link>
+          </h1>
           <span className="site-description">Validación y carga de archivos CSV</span>
         </div>
       </div>

@@ -172,10 +172,7 @@
     font-weight: 700;
     color: var(--accent-9);
     text-decoration: none;
-  }
-
-  .site-brand:hover {
-    color: var(--accent-11);
+    margin: 0 0 0;
   }
 
   .site-description {
