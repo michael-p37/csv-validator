@@ -1,6 +1,6 @@
-import { authController } from "@/controllers/auth.controllers.js";
+import { authController } from "@/controllers/auth.controller";
 import { requireAuth, resdirectIfAuthenticated } from "@/middlewares/auth.middleware";
-import { Router, type NextFunction, type Request, type Response } from "express";
+import { Router } from "express";
 
 const router = Router();
 
@@ -11,8 +11,6 @@ router.get("/", resdirectIfAuthenticated, (req, res, next) => {
 router.post("/login", resdirectIfAuthenticated, authController.login);
 
 router.post("/logout", requireAuth, authController.logout);
-
-//router.get("/correction", requireAuth, renderApp);
 
 // Devuelve la sesión actual (usada por los loaders del cliente)
 router.get("/session", (req, res) => {
