@@ -2,15 +2,22 @@ import { saveSession } from "@/config/session.js";
 import { loginSchema } from "@/schemas/auth.schema.js";
 import { userService } from "@/services/user.service.js";
 import { comparePassword } from "@/utils/auth.js";
+import { error } from "console";
 import type { NextFunction, Request, Response } from "express";
 // Removed unused locale imports from zod.
 
 export const authController = {
   async login(req: Request, res: Response, next: NextFunction) {
     try {
-      const { email, password } = loginSchema.parse(req.body);
-
-      const user = await userService.findUserByEmail(email);
+      const result = loginSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({
+          ok:false,
+          errors: result.error.flatten(),
+        });
+      }
+      const data = result.data;
+      const user = await userService.findUserByEmail(data.email);
 
       if (!user) {
         return res.status(401).send("Correo electrónico o contraseña inválidos");
@@ -20,7 +27,7 @@ export const authController = {
         return res.status(401).send("Correo electrónico o contraseña inválidos");
       }
 
-      const isValidPassword = await comparePassword(password, user.password);
+      const isValidPassword = await comparePassword(data.password, user.password);
 
       if (!isValidPassword) {
         return res.status(401).send("Correo electrónico o contraseña inválidos");
