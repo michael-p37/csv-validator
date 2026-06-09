@@ -1,6 +1,7 @@
 import express, { type NextFunction, type Request, type Response } from "express";
 import authRoutes from "../src/routes/auth.routes.js";
 import appRoutes from "../src/routes/app.routes.js";
+import uploadRoutes from "../src/routes/upload.routes.js"
 import fs from "fs";
 import path from "path";  
 import { sessionConfig } from "../src/config/session.js";
@@ -57,6 +58,7 @@ app.use(sessionConfig)
 
 app.use(authRoutes);
 app.use(appRoutes);
+app.use(uploadRoutes);
 
 async function renderPageRoute(req: Request, res: Response, next: NextFunction) {
   if (req.session.userId && (req.path === "/" || req.path === "/login")) {

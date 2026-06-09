@@ -2,9 +2,7 @@ import { saveSession } from "@/config/session.js";
 import { loginSchema } from "@/schemas/auth.schema.js";
 import { userService } from "@/services/user.service.js";
 import { comparePassword } from "@/utils/auth.js";
-import { error } from "console";
 import type { NextFunction, Request, Response } from "express";
-// Removed unused locale imports from zod.
 
 export const authController = {
   async login(req: Request, res: Response, next: NextFunction) {
