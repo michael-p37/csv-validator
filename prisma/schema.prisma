@@ -16,6 +16,13 @@ enum Role {
   USER
 }
 
+enum UploadStatus {
+  PENDING
+  VALIDATED
+  COMPLETED
+}
+
+//Usuarios del sisteme
 model User {
   id        Int   @id @default(autoincrement())
   name      String
@@ -23,5 +30,48 @@ model User {
   password  String?
   age       Int?
   role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  uploads   UploadJob[]
+}
+
+//proceso de carga
+model UploadJob {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+
+  uploadedBy  Int
+  user        User     @relation(fields: [uploadedBy], references: [id])
+
+  status      UploadStatus
+
+  rows        UploadRow[]
+}
+
+//Filas temporales
+model UploadRow {
+  id          String @id @default(cuid())
+
+  uploadJobId String
+  uploadJob   UploadJob @relation(fields: [uploadJobId], references: [id])
+
+  rowNumber   Int
+
+  name        String?
+  email       String?
+  age         Int?
+
+  isValid     Boolean @default(false)
+
+  errors      Json?
+}
+
+//Datos a cargar
+model Person {
+  id        String @id @default(cuid())
+
+  name      String
+  email     String @unique
+  age       Int
+
   createdAt DateTime @default(now())
 }
