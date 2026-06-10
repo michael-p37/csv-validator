@@ -5,14 +5,15 @@ import Card from "@/components/Card";
 import Input from "@/components/Input";
 
 export function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    const formData = new FormData(event.currentTarget);
+
     setError(null);
     setLoading(true);
 
@@ -22,7 +23,7 @@ export function LoginPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: formData.get("email"), password: formData.get("password"),}),
         credentials: "same-origin",
       });
 
@@ -42,7 +43,6 @@ export function LoginPage() {
     } catch (error) {
       console.error("LOGIN ERROR:", error);
       setError("Error de conexión. Intenta de nuevo.");
-      //setError("Error de conexión. Intenta de nuevo.");
     } finally {
       setLoading(false);
     }
@@ -58,7 +58,6 @@ export function LoginPage() {
         </div>
 
         {error ? <div className="form-alert">{error}</div> : null}
-
         <form className="login-form" onSubmit={handleSubmit}>
           <label className="form-group">
             Correo electrónico
@@ -66,8 +65,6 @@ export function LoginPage() {
               className="form-input"
               type="email"
               name="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
               placeholder="tucorreo@dominio.com"
               required
             />
@@ -79,8 +76,6 @@ export function LoginPage() {
               className="form-input"
               type="password"
               name="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
               placeholder="••••••••"
               required
             />
