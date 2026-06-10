@@ -21,6 +21,15 @@ enum UploadStatus {
   VALIDATED
   COMPLETED
 }
+//Sesion de usuarios
+model Session {
+  id           String   @id
+  sid          String   @unique
+  data         String
+  expiresAt    DateTime
+
+  @@index([expiresAt])
+}
 
 //Usuarios del sisteme
 model User {

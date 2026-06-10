@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express, { type NextFunction, type Request, type Response } from "express";
 import authRoutes from "../src/routes/auth.routes.js";
 import appRoutes from "../src/routes/app.routes.js";
