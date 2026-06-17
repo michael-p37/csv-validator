@@ -44,7 +44,7 @@
     --accent-a10: hsl(240 72% 35% / 0.68);
     --accent-a11: hsl(240 67% 34% / 0.67);
     --accent-a12: hsl(240 85% 14% / 0.85);
-    --accent-contrast: var(--white);
+    --accent-contrast: var(--accent-6);
 
     --neutral-1: hsl(240 9% 99%);
     --neutral-2: hsl(240 8% 98%);
@@ -75,6 +75,13 @@
     /* Tokens de color */
     --background: var(--base-background);
     --foreground: var(--neutral-12);
+
+    --card-background: white;
+    --card-foreground: var(--neutral-10);
+
+    --row-background: var(--accent-2);
+    --input-shadow: var( --neutral-8);
+
     --accent-background: var(--accent-3);
     --accent-foreground: var(--accent-11);
     --muted-background: var(--neutral-a2);
@@ -94,6 +101,15 @@
   @media (prefers-color-scheme: dark) {
     :root {
       --base-background: var(--neutral-1);
+      
+      --background: hsl(240 6% 7%);
+      --foreground: hsl(220 9% 94%);
+      
+      --card-background: hsl(244 25% 12%);
+      --card-foreground: var(--neutral-11);
+
+      --row-background: var(--accent-a1);
+      --input-shadow: var(--neutral-8);
 
       --accent-1: hsl(240 22% 10%);
       --accent-2: hsl(244 25% 12%);
@@ -221,13 +237,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 2.5rem 1.5rem;
+    padding: 2rem 1.5rem;
   }
 
   .card-panel {
     border-radius: 1.5rem;
     border: none;
-    background: var(--white);
+    background: var(--card-background);
+    color: var(--card-foreground);
     padding: 2rem;
     box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
     width: min(100%, 28rem);
@@ -265,8 +282,8 @@
   .form-input {
     border-radius: 0.75rem;
     border: 1px solid var(--border);
-    background: var(--neutral-contrast);
-    color: var(--accent-1);
+    background: var(--card-background);
+    color: var(--card-foreground);
     padding: 0.75rem 1rem;
     outline: none;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -277,12 +294,11 @@
 
   .form-input:focus {
     border-color: var(--outline);
-    box-shadow: 0 0 0 4px var(--neutral-11);
+    box-shadow: 0 0 0 4px var(--neutral-8);
   }
 
   .btn-primary {
     display: inline-flex;
-    width: 100%;
     align-items: center;
     justify-content: center;
     border-radius: 0.75rem;
@@ -296,7 +312,6 @@
 
   .btn {
     display: inline-flex;
-    width: 100%;
     align-items: center;
     justify-content: center;
     border-radius: 0.75rem;
@@ -308,8 +323,8 @@
   }
 
   .btn-primary {
-    background: var(--accent-10);
-    color: var(--accent-contrast);
+    background: var(--primary-background);
+    color: var(--primary-foreground);
   }
 
   .btn-secondary {
@@ -322,7 +337,7 @@
   }
 
   .btn-primary:hover {
-    background: var(--accent-11);
+    background: var(---primary-background-hover);
   }
 
   .btn-primary:disabled,
@@ -356,5 +371,115 @@
     color: var(--accent-12);
     padding: 1rem;
     margin-bottom: 1rem;
+  }
+
+  .upload-dropzone {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    border: 2px dashed var(--border);
+    border-radius: 1.25rem;
+    background: var(--accent-2);
+    padding: 1rem;
+    text-align: center;
+  }
+
+  .upload-dropzone:hover {
+    border-color: var(--accent-9);
+  }
+
+  .correction-shell {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  }
+
+  .correction-card {
+    border-radius: 1.5rem;
+    background: var(--card-background);
+    color: var(--card-foreground);
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+    padding: 2rem;
+  }
+
+  .correction-header {
+    margin-bottom: 2rem;
+  }
+
+  .correction-header h1 {
+    margin: 0 0 0.75rem;
+    color: var(--neutral-11);
+    font-size: 2rem;
+  }
+
+  .correction-header p {
+    color: var(--neutral-8);
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+    border: 1px solid var(--separator);
+    border-radius: 1rem;
+  }
+
+  .correction-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .correction-table thead {
+    background: var(--accent-3);
+  }
+
+  .correction-table th {
+    text-align: left;
+    padding: 1rem;
+    color: var(--neutral-11);
+    font-weight: 700;
+    border-bottom: 1px solid var(--separator);
+  }
+
+  .correction-table td {
+    padding: 0.4rem;
+    border-bottom: 1px solid var(--separator);
+    vertical-align: top;
+  }
+
+  .correction-table tbody tr:hover {
+    background: var(--row-background);
+  }
+
+  .cell-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .field-error {
+    font-size: 0.8rem;
+    color: #ef4444;
+    font-weight: 500;
+  }
+
+  .action-bar {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .success-panel {
+    text-align: center;
+    display: grid;
+    gap: 1rem;
+  }
+
+  .success-panel h1 {
+    color: var(--accent-10);
+  }
+
+  .empty-state {
+    text-align: center;
+    display: grid;
+    gap: 1rem;
   }
 }
