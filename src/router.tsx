@@ -16,7 +16,7 @@ export const routeObjects: RouteObject[] = [
       { path: "login", element: <LoginPage /> },
       { path: "upload", element: <UploadPage />},
       { path: "admin", element: <AdminPage />},
-      { path: "correction", element: <CorrectionPage />},
+      { path: "upload-jobs/:id/errors", element: <CorrectionPage />},
     ],
   },
 ];

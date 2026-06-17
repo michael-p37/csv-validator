@@ -3,7 +3,7 @@ import csv from "csv-parser";
 import type { NextFunction, Request, Response } from "express";
 import { csvRowSchema, type CsvRow } from "@/schemas/csv-row.schema";
 import { prisma } from "@/db/prisma";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 type ValidationIssue = {
   path: string [];
@@ -17,7 +17,7 @@ interface CsvValidationError {
 }
 
 export const uploadController = {
-  async loadCsv(req: Request, res: Response) {
+  async upLoadCsv(req: Request, res: Response) {
     if (!req.file) {
       return res.status(400).json({
         ok: false,
@@ -129,10 +129,10 @@ export const uploadController = {
 
         return res.json({
           ok: invalidRows.length === 0,
-          ploadJobId: uploadJob.id,
-          otalRows: validPersons.length + invalidRows.length,
-          alidRows: validPersons.length,
-          nvalidRows: invalidRows.length,
+          uploadJobId: uploadJob.id,
+          totalRows: validPersons.length + invalidRows.length,
+          validRows: validPersons.length,
+          invalidRows: invalidRows.length,
         });
       })
       .on("error", (err) => {
@@ -143,7 +143,59 @@ export const uploadController = {
       });
   },
 
-  async updateCsv(req: Request, res: Response, next: NextFunction) {
-
+  async uploadJobs(req: Request, res: Response, next: NextFunction) {
+     console.log("UPLOAD JOBS HIT");
+    const { id } = req.params;
+    if (!id || Array.isArray(id)) {
+      return res.status(400).json({
+        ok: false,
+        message: "id inválido",
+      })
+    }
+    const rows = await prisma.uploadRow.findMany({
+      where: { uploadJobId: id, isValid: false, },
+      orderBy: { rowNumber: "asc" },
+    });
+    
+    return res.status(200).json(rows);
   },
+
+  async bulkUpdate(req: Request, res: Response) {
+    const rows = req.body;
+
+    for (const row of rows) {
+      const result = csvRowSchema.safeParse({
+        name: row.name,
+        email: row.email,
+        age: Number(row.age),
+      });
+
+      if (!result.success) {
+        continue;
+      }
+
+      await prisma.uploadRow.update({
+        where: {
+          id: row.id,
+        },
+        data: {
+          name: row.name,
+          email: row.email,
+          age: Number(row.age),
+
+          isValid: true,
+          errors: Prisma.JsonNull,
+        },
+      });
+
+      await prisma.person.create({
+        data: {
+          name: result.data.name,
+          email: result.data.email,
+          age: result.data.age,
+        },
+      });
+    }
+    return res.status(200).json({ ok: true });
+  }  
 }
