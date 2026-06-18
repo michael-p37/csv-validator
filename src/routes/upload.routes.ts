@@ -14,6 +14,7 @@ router.post(
   uploadController.upLoadCsv
 );
 router.get("/upload-jobs/:id/rows",requireAuth, requireRole("ADMIN"),uploadController.uploadJobs);
+router.get("/upload-jobs/:id",requireAuth, requireRole("ADMIN"),uploadController.uploadJobsStatus);
 router.put("/upload-rows/bulk-update",requireAuth, requireRole("ADMIN"),uploadController.bulkUpdate);
 
 export default router;
