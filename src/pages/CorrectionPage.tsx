@@ -1,7 +1,7 @@
 import Button from "@/components/Button";
 import Card from "@/components/Card";
 import { EditableCell } from "@/components/EditableCell";
-import Input from "@/components/Input";
+import { csvRowSchema } from "@/schemas/csv-row.schema";
 import type { UploadRow } from "@prisma/client";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
@@ -11,30 +11,99 @@ type RowError = {
   message: string;
 };
 
+
 export function CorrectionPage() {
   const [rows, setRows] = useState<UploadRow[]>([]);
   const {id} = useParams();
 
   const [completed, setCompleted] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const updateRow = (id: string, field: string, value: any) => {
-    setRows((prev) =>
-      prev.map((row) =>
-        row.id === id
-          ? { ...row, [field]: value }
-          : row
-      )
-    );
-  };
+  //Carga el estado de job desde la DB
+  //Solo se carga filas cuando existan campos que corregir
   useEffect(() => {
-    fetch(`/upload-jobs/${id}/rows`, {
-      credentials: "include",
-    })
-      .then((res) => res.json())
-      .then(setRows);
+    async function loadData() {
+      const jobRes = await fetch(`/upload-jobs/${id}`, {
+        credentials: "include",
+      });
+      const job = await jobRes.json();
+
+      if (job.status === "COMPLETED") {
+        setCompleted(true);
+        setLoading(false)
+        return;
+      }
+
+      const rowsRes = await fetch(`/upload-jobs/${id}/rows`, {
+        credentials: "include",
+      });
+
+      const rows = await rowsRes.json();
+
+      setRows(rows);
+      setLoading(false);
+    }
+
+    loadData();
   }, [id]);
 
+  //Funcion que valida las filas y genera el formato que encaja con RowError
+  function validateRow(row: UploadRow) {
+    const result = csvRowSchema.safeParse({
+      name: row.name,
+      email: row.email,
+      age: row.age,
+    });
+    if (result.success) {
+      return {
+        isValid: true,
+        errors: [],
+      };
+    }
+    return {
+      isValid: false,
+      errors: result.error.issues.map(issue => ({
+        path: issue.path.map(String),
+        message: issue.message,
+      })),
+    };
+  }
+
+  const updateRow = (id: string, field: string, value: any) => {
+    setRows(prev =>
+    prev.map(row => {
+      if (row.id !== id) {
+        return row;
+      }
+
+      const updatedRow = {
+        ...row,
+        [field]: value,
+      };
+
+      const validation =
+        validateRow(updatedRow);
+
+      return {
+        ...updatedRow,
+        isValid: validation.isValid,
+        errors: validation.errors,
+      };
+    })
+    );
+  };
+
+  const hasErrors = rows.some(row => !row.isValid);
+
   async function saveChanges() {
+
+    //Evita modoficar el HTML desde DevTools 
+    if (hasErrors) {
+      alert(
+        "Existen errores pendientes por corregir"
+      );
+      return;
+    }
     const response = await fetch("/upload-rows/bulk-update", {
       method: "PUT",
       credentials: "include",
@@ -72,6 +141,10 @@ export function CorrectionPage() {
     return error?.message ?? null;
   }
 
+  //Evita el parpadeo al refrescar despues de carga exitosa
+  if (loading) {
+    return null;
+  }
   return (
     <main>
       {!completed ? 
@@ -142,6 +215,7 @@ export function CorrectionPage() {
               <Button
                 className="btn-primary"
                 onClick={saveChanges}
+                disabled={hasErrors}
               >
                 Guardar cambios
               </Button>
@@ -150,7 +224,7 @@ export function CorrectionPage() {
         </div> 
         :
         <div>
-          <Card className="card-panel success-panel">
+          <Card className="success-panel success-panel">
             <h1>Corrección completada</h1>
 
             <p>
