@@ -123,7 +123,9 @@ export const uploadController = {
             id: uploadJob.id,
           },
           data: {
-            status: "COMPLETED",
+            status: invalidRows.length > 0
+              ? "VALIDATED"
+              : "COMPLETED",
           },
         });
 
@@ -162,6 +164,7 @@ export const uploadController = {
 
   async bulkUpdate(req: Request, res: Response) {
     const rows = req.body;
+    const uploadJobId = rows[0]?.uploadJobId;
 
     for (const row of rows) {
       const result = csvRowSchema.safeParse({
@@ -170,8 +173,12 @@ export const uploadController = {
         age: Number(row.age),
       });
 
+      //Validacion de filas desde el backend
       if (!result.success) {
-        continue;
+        return res.status(400).json({
+          ok: false,
+          message: "Existen filas inválidas",
+        });
       }
 
       await prisma.uploadRow.update({
@@ -196,6 +203,38 @@ export const uploadController = {
         },
       });
     }
+
+    //Despues de que todas las filas fueron corregidos se actualiza el job
+    await prisma.uploadJob.update({
+      where: {
+        id: uploadJobId,
+      },
+      data: {
+        status: "COMPLETED",
+      },
+    });
+
     return res.status(200).json({ ok: true });
-  }  
+  },
+  
+  async uploadJobsStatus(req: Request, res: Response) {
+    const {id} = req.params
+    if (!id || Array.isArray(id)) {
+      return res.status(400).json({
+        ok: false,
+        message: "id inválido",
+      })
+    }
+    const job = await prisma.uploadJob.findUnique({
+      where: {
+        id,
+      },
+      select: {
+        id: true,
+        status: true,
+      },
+    });
+  
+    return res.status(200).json(job);
+  }
 }
