@@ -29,3 +29,8 @@ export const csvRowSchema = z.object({
 );
 
 export type CsvRow = z.infer<typeof csvRowSchema>;
+
+export const uploadErrorSchema = z.object({
+  ok: z.literal(false),
+  error: z.string(),
+});

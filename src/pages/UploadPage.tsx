@@ -1,26 +1,36 @@
 import Button from "@/components/Button";
 import Card from "@/components/Card";
-import Input from "@/components/Input";
+import { uploadErrorSchema } from "@/schemas/csv-row.schema";
 import { uploadResponseSchema } from "@/schemas/upload.schema";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 export function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
+  const [error, setError] = useState("");
+  const [uploadState, setUploadState] = useState<
+    "idle" | "processing" | "done"
+  >("idle");
 
   const [uploadResult, setUploadResult] = useState<{
     uploadJobId: string;
     invalidRows: number;
   } | null>(null);
-
-  async function handleSubmit(e:  React.FormEvent<HTMLFormElement>) {
-    try {
-      e.preventDefault();
-      if (!file) {
-        alert("Selecciona un archivo");
-        return;
-      }
+  const inputRef = useRef<HTMLInputElement>(null);//limpia el imput visual
   
+  async function handleSubmit(e:  React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (uploadState === "processing" || !file) return;
+
+    if (!file) {
+      alert("Selecciona un archivo");
+      return;
+    }
+
+    setError("");
+    setUploadState("processing");
+    try {
+
       const formData = new FormData();
       formData.append("csv", file);
       const response = await fetch("/upload", {
@@ -29,14 +39,29 @@ export function UploadPage() {
         body: formData,
       });
 
-      const rawData = await response.json();
-      const data = uploadResponseSchema.parse(rawData);
+      const rowData = await response.json();
+
+      if (!rowData.ok) {
+        const error = uploadErrorSchema.parse(rowData);
+        setError(error.error);
+        setUploadState("idle");
+        setFile(null);
+        return;
+      }
+
+      const data = uploadResponseSchema.parse(rowData);
       setUploadResult({
         uploadJobId: data.uploadJobId,
         invalidRows: data.invalidRows,
       });
+      setUploadState("done");
+      setFile(null);
     } catch (err) {
       console.error(err);
+      setError("Error inesperado");
+      setUploadState("done"); // Siempre liberar
+    } finally {
+      if (inputRef.current) inputRef.current.value = "";
     }
   }
   return (
@@ -51,10 +76,7 @@ export function UploadPage() {
         <form
           onSubmit={handleSubmit}
           className="upload-dropzone"
-          style={{
-            borderColor: "var(--border)",
-            background: "var(--accent-2)",
-          }}
+          style={{ pointerEvents: uploadState === "processing" ? "none" : "auto" }}
         >
           <p
             className="mb-6"
@@ -63,9 +85,11 @@ export function UploadPage() {
             Selecciona un archivo CSV para comenzar la validación.
           </p>
 
-          <Input
+          <input
+            ref={inputRef}
             type="file"
             accept=".csv"
+            disabled={uploadState === "processing" || uploadState === "done"}
             onChange={(e) =>
               setFile(e.target.files?.[0] ?? null)
             }
@@ -76,11 +100,18 @@ export function UploadPage() {
             <Button
               type="submit"
               className="btn-primary"
+              disabled={uploadState === "processing" || uploadState === "done" || !file}
             >
-              Subir archivo
+              {uploadState === "processing" ? "Subiendo..." : "Subir archivo"}
             </Button>
           </div>
         </form>
+        
+        {error && (
+          <span className="field-error">
+            {error}
+          </span>
+        )}
 
         {uploadResult?.invalidRows ? (
           <div className="form-alert mt-6">
