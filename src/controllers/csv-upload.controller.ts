@@ -130,7 +130,7 @@ export const uploadController = {
         });
 
         return res.json({
-          ok: invalidRows.length === 0,
+          ok: true, //true evita inconsistencia entre HTTP status y el campo ok del JSON
           uploadJobId: uploadJob.id,
           totalRows: validPersons.length + invalidRows.length,
           validRows: validPersons.length,
