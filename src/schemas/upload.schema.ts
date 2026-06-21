@@ -5,6 +5,7 @@ export const uploadResponseSchema = z.object({
   totalRows: z.number(),
   validRows: z.number(),
   invalidRows: z.number(),
+  duplicateRows: z.number(),
 });
 
 export type UploadResponse = z.infer<typeof uploadResponseSchema>;

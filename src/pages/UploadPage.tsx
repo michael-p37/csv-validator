@@ -15,6 +15,8 @@ export function UploadPage() {
   const [uploadResult, setUploadResult] = useState<{
     uploadJobId: string;
     invalidRows: number;
+    duplicateRows: number;
+    validRows: number;
   } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);//limpia el imput visual
   
@@ -53,6 +55,8 @@ export function UploadPage() {
       setUploadResult({
         uploadJobId: data.uploadJobId,
         invalidRows: data.invalidRows,
+        validRows: data.validRows,
+        duplicateRows: data.duplicateRows,
       });
       setUploadState("done");
       setFile(null);
@@ -111,6 +115,13 @@ export function UploadPage() {
           <span className="field-error">
             {error}
           </span>
+        )}
+
+        {uploadResult && uploadResult.duplicateRows > 0 && (
+          <div className="form-alert">
+            Se importaron {uploadResult.validRows} registros nuevos.  
+            Se omitieron {uploadResult.duplicateRows} registros duplicados.
+          </div>
         )}
 
         {uploadResult?.invalidRows ? (
