@@ -30,6 +30,8 @@ export const uploadController = {
     const expectedHeaders = Object.keys(csvRowSchema.shape) as Array<keyof CsvRow>;
     let headerError: string | null = null;
 
+    let duplicateCount = 0;
+
     const validPersons: Prisma.PersonCreateManyInput[] = [];
     const invalidRows: Prisma.UploadRowCreateManyInput[] = [];
 
@@ -105,9 +107,43 @@ export const uploadController = {
           });
         }
 
-        if (validPersons.length > 0) {
+        //Se extraen datos para validar datos duplicados
+        const existingPersons = await prisma.person.findMany({
+          where: {
+            email: {
+              in: validPersons.map(p => p.email),
+            },
+          },
+          select: {
+            email: true,
+          },
+        });
+        
+        // Se crea una coleccion de emails donde no existen duplicados 
+        const existingEmails = new Set(existingPersons.map(p => p.email));
+        
+        const personsToInsert: Prisma.PersonCreateManyInput[] = [];
+        
+        for (const person of validPersons) {
+          if (existingEmails.has(person.email)) {
+              duplicateCount++;
+              continue;
+          } 
+
+          //Actualizacion del Set durante el recorrido
+          //Detecta emails duplicados en el mismo lote validPersons
+          existingEmails.add(person.email);
+
+          personsToInsert.push({
+            name: person.name,
+            email: person.email,
+            age: person.age,
+          });
+        }
+        
+        if (personsToInsert.length > 0) {
           await prisma.person.createMany({
-            data: validPersons,
+            data: personsToInsert,
             skipDuplicates: true,
           });
         }
@@ -133,8 +169,9 @@ export const uploadController = {
           ok: true, //true evita inconsistencia entre HTTP status y el campo ok del JSON
           uploadJobId: uploadJob.id,
           totalRows: validPersons.length + invalidRows.length,
-          validRows: validPersons.length,
+          validRows: personsToInsert.length,
           invalidRows: invalidRows.length,
+          duplicateRows: duplicateCount,
         });
       })
       .on("error", (err) => {
@@ -146,7 +183,6 @@ export const uploadController = {
   },
 
   async uploadJobs(req: Request, res: Response, next: NextFunction) {
-     console.log("UPLOAD JOBS HIT");
     const { id } = req.params;
     if (!id || Array.isArray(id)) {
       return res.status(400).json({
