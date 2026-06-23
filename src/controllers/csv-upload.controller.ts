@@ -182,7 +182,7 @@ export const uploadController = {
       });
   },
 
-  async uploadJobs(req: Request, res: Response, next: NextFunction) {
+  async uploadJobs(req: Request, res: Response) {
     const { id } = req.params;
     if (!id || Array.isArray(id)) {
       return res.status(400).json({
@@ -201,6 +201,87 @@ export const uploadController = {
   async bulkUpdate(req: Request, res: Response) {
     const rows = req.body;
     const uploadJobId = rows[0]?.uploadJobId;
+
+    let hasDuplicateErrors = false;
+    const seenEmails = new Set<string>();
+
+    const emails = rows.map((row: any) => row.email);
+
+    await prisma.uploadRow.updateMany({
+      where: {
+        uploadJobId,
+      },
+      data: {
+        errors: Prisma.JsonNull,
+      },
+    });
+
+    const existingPersons = await prisma.person.findMany({
+      where: {
+        email: {in: emails},
+      },
+      select: {
+        email: true,
+      }
+    })
+    const existingEmails = new Set(existingPersons.map(p => p.email));
+
+    //Esta forma de validacion no es efectivo en cientos de datos a validar
+    //En caso de este proyecto se usa para mostrar mensaje de error en la misma tabla de correccion
+    for (const row of rows) {
+      //Detecta duplicado desde la DB
+      if (existingEmails.has(row.email)) {
+        hasDuplicateErrors = true;
+        //Actualiza
+        await prisma.uploadRow.update({
+          where: {
+            id: row.id,
+          },
+          data: {
+            errors: [
+              {
+                path: ["email"],
+                message: "El email ya existe en la base de datos",
+              },
+            ],
+            isValid: false,
+          },
+        });
+      }
+    
+      //Duplicado en la misma carga
+      if (seenEmails.has(row.email)) {
+        hasDuplicateErrors = true;
+        await prisma.uploadRow.update({
+          where: {
+            id: row.id,
+          },
+          data: {
+            errors: [
+              {
+                path: ["email"],
+                message: "Email duplicado en las correcciones",
+              },
+            ],
+            isValid: false,
+          },
+        });
+      }
+
+      seenEmails.add(row.email);
+    }
+    
+    //la regla "no usar 400", en este caso si se puede omitir
+    //Es una operacion que puede fallar, entoces es razonable responder asi
+    //Siempre que los errores ya esten guardados en uploadRow.errors
+    //Siempre que el frontend Recargue la tabla
+    if (hasDuplicateErrors) {
+      return res.status(400).json({
+        ok: false,
+      });
+    }
+
+    const personsToCreate:  Prisma.PersonCreateManyInput[] = [];
 
     for (const row of rows) {
       const result = csvRowSchema.safeParse({
@@ -230,15 +311,18 @@ export const uploadController = {
           errors: Prisma.JsonNull,
         },
       });
-
-      await prisma.person.create({
-        data: {
-          name: result.data.name,
-          email: result.data.email,
-          age: result.data.age,
-        },
-      });
+      //No es eficiente crear en DB uno por uno dentro del loop
+      personsToCreate.push({
+        name: result.data.name,
+        email: result.data.email,
+        age: result.data.age,
+      })
     }
+
+    //Crear datos despues de acumular en personsToCreate
+    await prisma.person.createMany({
+      data: personsToCreate,
+    });
 
     //Despues de que todas las filas fueron corregidos se actualiza el job
     await prisma.uploadJob.update({

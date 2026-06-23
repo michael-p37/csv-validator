@@ -95,6 +95,21 @@ export function CorrectionPage() {
 
   const hasErrors = rows.some(row => !row.isValid);
 
+  //Reload para refrescar los mesages de error en email
+  //En una version futura se usará  useRevalidator de React Router 
+  async function reloadRows() {
+    const response = await fetch(
+      `/upload-jobs/${id}/rows`,
+      {
+        credentials: "include",
+      }
+    );
+
+    const data = await response.json();
+
+    setRows(data);
+  }
+
   async function saveChanges() {
 
     //Evita modoficar el HTML desde DevTools 
@@ -113,12 +128,12 @@ export function CorrectionPage() {
       body: JSON.stringify(rows),
     });
 
+    const data = await response.json();
+    
     if (!response.ok) {
-      alert("Error al guardar");
+      await reloadRows();//Vuelve a traer los errores actualizados
       return;
     }
-    const data = await response.json();
-
     if (data.ok) {
       setCompleted(true);
     }
