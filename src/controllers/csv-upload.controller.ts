@@ -1,9 +1,10 @@
 import fs from "fs";
 import csv from "csv-parser";
-import type { NextFunction, Request, Response } from "express";
+import type { Request, Response } from "express";
 import { csvRowSchema, type CsvRow } from "@/schemas/csv-row.schema";
 import { prisma } from "@/db/prisma";
 import { Prisma } from "@prisma/client";
+import { bulkUpdateRowsSchema } from "@/schemas/upload.schema";
 
 type ValidationIssue = {
   path: string [];
@@ -199,13 +200,21 @@ export const uploadController = {
   },
 
   async bulkUpdate(req: Request, res: Response) {
-    const rows = req.body;
+    const rows = bulkUpdateRowsSchema.parse(req.body);
     const uploadJobId = rows[0]?.uploadJobId;
 
     let hasDuplicateErrors = false;
     const seenEmails = new Set<string>();
 
-    const emails = rows.map((row: any) => row.email);
+    const emails = rows.map(row => row.email);
+
+    //Validacion explicita del id
+    if (!uploadJobId) {
+      return res.status(400).json({
+        ok: false,
+        message: "No hay filas para procesar",
+      });
+    }
 
     await prisma.uploadRow.updateMany({
       where: {
@@ -298,19 +307,6 @@ export const uploadController = {
         });
       }
 
-      await prisma.uploadRow.update({
-        where: {
-          id: row.id,
-        },
-        data: {
-          name: row.name,
-          email: row.email,
-          age: Number(row.age),
-
-          isValid: true,
-          errors: Prisma.JsonNull,
-        },
-      });
       //No es eficiente crear en DB uno por uno dentro del loop
       personsToCreate.push({
         name: result.data.name,
@@ -319,19 +315,48 @@ export const uploadController = {
       })
     }
 
-    //Crear datos despues de acumular en personsToCreate
-    await prisma.person.createMany({
-      data: personsToCreate,
-    });
+    //Actualizar UploadRow 
+    //Crear Persons
+    //Actualizar UploadJob 
+    //Se ejecutan juntos dentro de una transaccion 
+    //Esto mantiene la consistencia de la db 
+    await prisma.$transaction(async (tx) => {
 
-    //Despues de que todas las filas fueron corregidos se actualiza el job
-    await prisma.uploadJob.update({
-      where: {
-        id: uploadJobId,
-      },
-      data: {
-        status: "COMPLETED",
-      },
+      //Acumula los updates y ejecuta en paralelo 
+      //Mas eficiente el cientos de filas
+      await Promise.all(
+        rows.map(row =>
+          tx.uploadRow.update({
+            where: {
+              id: row.id,
+            },
+            data: {
+              name: row.name,
+              email: row.email,
+              age: Number(row.age),
+
+              isValid: true,
+              errors: Prisma.JsonNull,
+            },
+          })
+        )
+      );
+
+      //Crear datos despues de acumular en personsToCreate
+      await tx.person.createMany({
+        data: personsToCreate,
+      });
+  
+      //Despues de que todas las filas fueron corregidos se actualiza el job
+      await tx.uploadJob.update({
+        where: {
+          id: uploadJobId,
+        },
+        data: {
+          status: "COMPLETED",
+        },
+      });
+
     });
 
     return res.status(200).json({ ok: true });
