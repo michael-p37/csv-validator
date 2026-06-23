@@ -76,6 +76,8 @@
     --background: var(--base-background);
     --foreground: var(--neutral-12);
 
+    --header-foreground: var(--accent-9);
+    
     --card-background: white;
     --card-foreground: var(--neutral-10);
 
@@ -88,7 +90,7 @@
     --muted-foreground: var(--neutral-11);
     --primary-background: var(--accent-9);
     --primary-foreground: var(--accent-contrast);
-    --secondary-background: var(--neutral-3);
+    --secondary-background: var(--neutral-4);
     --secondary-foreground: var(--neutral-11);
     --border: var(--neutral-7);
     --outline: var(--accent-11);
@@ -101,14 +103,16 @@
   @media (prefers-color-scheme: dark) {
     :root {
       --base-background: var(--neutral-1);
+
+      --header-foreground: var(--accent-a10);
       
       --background: hsl(240 6% 7%);
       --foreground: hsl(220 9% 94%);
       
-      --card-background: hsl(244 25% 12%);
+      --card-background: var(--neutral-a2);
       --card-foreground: var(--neutral-11);
 
-      --row-background: var(--accent-a1);
+      --row-background: var(--neutral-a2);
       --input-shadow: var(--neutral-8);
 
       --accent-1: hsl(240 22% 10%);
@@ -168,7 +172,6 @@
 
 @layer components {
   .site-header {
-    background: var(--white);
     border-bottom: 1px solid var(--separator);
     color: var(--foreground);
   }
@@ -186,7 +189,7 @@
 
   .site-brand {
     font-weight: 700;
-    color: var(--accent-9);
+    color: var(--header-foreground);
     text-decoration: none;
     margin: 0 0 0;
   }
@@ -367,10 +370,9 @@
   .form-alert {
     border-radius: 1rem;
     border: 1px solid var(--accent-4);
-    background: var(--accent-2);
     color: var(--accent-12);
     padding: 1rem;
-    margin-bottom: 1rem;
+    margin: 1rem 0 1rem;
   }
 
   .upload-dropzone {
@@ -379,7 +381,6 @@
     gap: 1rem;
     border: 2px dashed var(--border);
     border-radius: 1.25rem;
-    background: var(--accent-2);
     padding: 1rem;
     text-align: center;
   }
@@ -428,7 +429,7 @@
   }
 
   .correction-table thead {
-    background: var(--accent-3);
+    background: var(--neutral-a2);
   }
 
   .correction-table th {
