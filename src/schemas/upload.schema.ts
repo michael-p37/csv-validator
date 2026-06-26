@@ -16,6 +16,7 @@ export const bulkUpdateRowSchema = z.object({
   name: z.string(),
   email: z.string().email(),
   age:  z.coerce.number(),
+  isValid: z.boolean()
 });
 
 export const bulkUpdateRowsSchema = z.array(

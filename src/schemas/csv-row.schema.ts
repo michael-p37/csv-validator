@@ -24,7 +24,7 @@ export const csvRowSchema = z.object({
 .refine(data => data.age >= 18, 
   { 
     message: "Debe ser mayor de edad",
-    path: ["edad"],
+    path: ["age"],
   }
 );
 

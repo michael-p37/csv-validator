@@ -183,7 +183,9 @@ export const uploadController = {
       });
   },
 
+  //Cargar las fias con errores
   async uploadJobs(req: Request, res: Response) {
+    //Se obtiene el id del UploadJob
     const { id } = req.params;
     if (!id || Array.isArray(id)) {
       return res.status(400).json({
@@ -191,6 +193,7 @@ export const uploadController = {
         message: "id inválido",
       })
     }
+    //Busca únicamente las fias invalidas
     const rows = await prisma.uploadRow.findMany({
       where: { uploadJobId: id, isValid: false, },
       orderBy: { rowNumber: "asc" },
@@ -203,8 +206,8 @@ export const uploadController = {
     const rows = bulkUpdateRowsSchema.parse(req.body);
     const uploadJobId = rows[0]?.uploadJobId;
 
-    let hasDuplicateErrors = false;
-    const seenEmails = new Set<string>();
+    let hasDuplicateErrors = false; //Para comprobar si al final hubo errores
+    const seenEmails = new Set<string>(); //Detectar duplicados dentro de la misma carga
 
     const emails = rows.map(row => row.email);
 
@@ -216,15 +219,7 @@ export const uploadController = {
       });
     }
 
-    await prisma.uploadRow.updateMany({
-      where: {
-        uploadJobId,
-      },
-      data: {
-        errors: Prisma.JsonNull,
-      },
-    });
-
+    //Extrae solamente esos emails 
     const existingPersons = await prisma.person.findMany({
       where: {
         email: {in: emails},
@@ -235,55 +230,54 @@ export const uploadController = {
     })
     const existingEmails = new Set(existingPersons.map(p => p.email));
 
-    //Esta forma de validacion no es efectivo en cientos de datos a validar
-    //En caso de este proyecto se usa para mostrar mensaje de error en la misma tabla de correccion
+    //Empieza el ciclo principal
+    //Cada iteracion coresponde a una fila dekl csv
     for (const row of rows) {
-      //Detecta duplicado desde la DB
+      const rowErrors = []; //Aqui se acumularan los erroers de esa fila
+
+      //Detecta duplicado en la tabla Person
       if (existingEmails.has(row.email)) {
         hasDuplicateErrors = true;
         //Actualiza
-        await prisma.uploadRow.update({
-          where: {
-            id: row.id,
-          },
-          data: {
-            errors: [
-              {
-                path: ["email"],
-                message: "El email ya existe en la base de datos",
-              },
-            ],
-            isValid: false,
-          },
+        rowErrors.push({
+          path: ["email"],  
+          message: "El email ya existe en la base de datos",
         });
       }
     
       //Duplicado en la misma carga
       if (seenEmails.has(row.email)) {
         hasDuplicateErrors = true;
-        await prisma.uploadRow.update({
-          where: {
-            id: row.id,
-          },
-          data: {
-            errors: [
-              {
-                path: ["email"],
-                message: "Email duplicado en las correcciones",
-              },
-            ],
-            isValid: false,
-          },
+        rowErrors.push({
+          path: ["email"],
+          message: "Email duplicado en las correcciones",
         });
+      }
+      //Actualiza la tabla UploadRow con los nuevos errores
+      await prisma.uploadRow.update({
+        where: {
+          id: row.id,
+        },
+        data: {
+          name: row.name,       //Evita que el usuario pierda sus correcciones
+          email: row.email,     //Evita que el usuario pierda sus correcciones
+          age: Number(row.age), //Evita que el usuario pierda sus correcciones
+
+          errors: rowErrors,
+          isValid: rowErrors.length === 0,
+        },
+      });
+
+      if (rowErrors.length > 0) {
+        hasDuplicateErrors = true;
       }
 
       seenEmails.add(row.email);
     }
     
-    //la regla "no usar 400", en este caso si se puede omitir
-    //Es una operacion que puede fallar, entoces es razonable responder asi
-    //Siempre que los errores ya esten guardados en uploadRow.errors
-    //Siempre que el frontend Recargue la tabla
+    //Si existe cualquier error responde 400 y termina
+    //No inserta personas
+    //No completa el UploadJob
     if (hasDuplicateErrors) {
       return res.status(400).json({
         ok: false,
@@ -301,10 +295,8 @@ export const uploadController = {
 
       //Validacion de filas desde el backend
       if (!result.success) {
-        return res.status(400).json({
-          ok: false,
-          message: "Existen filas inválidas",
-        });
+        hasDuplicateErrors = true;
+        continue;
       }
 
       //No es eficiente crear en DB uno por uno dentro del loop
@@ -314,16 +306,16 @@ export const uploadController = {
         age: result.data.age,
       })
     }
+    if (hasDuplicateErrors) {
+      return res.status(400).json({
+        ok: false,
+      });
+    }
 
-    //Actualizar UploadRow 
-    //Crear Persons
-    //Actualizar UploadJob 
-    //Se ejecutan juntos dentro de una transaccion 
-    //Esto mantiene la consistencia de la db 
+    //Todo ocurre como una sola operacion, si falla una parte todo vuelve atras
     await prisma.$transaction(async (tx) => {
-
+      //Actualizar UploadRow
       //Acumula los updates y ejecuta en paralelo 
-      //Mas eficiente el cientos de filas
       await Promise.all(
         rows.map(row =>
           tx.uploadRow.update({
@@ -342,7 +334,7 @@ export const uploadController = {
         )
       );
 
-      //Crear datos despues de acumular en personsToCreate
+      //Inserta personas en una sola consulta
       await tx.person.createMany({
         data: personsToCreate,
       });
