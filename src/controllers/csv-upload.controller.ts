@@ -206,7 +206,7 @@ export const uploadController = {
     const rows = bulkUpdateRowsSchema.parse(req.body);
     const uploadJobId = rows[0]?.uploadJobId;
 
-    let hasDuplicateErrors = false; //Para comprobar si al final hubo errores
+    let hasErrors = false; //Para comprobar si al final hubo errores
     const seenEmails = new Set<string>(); //Detectar duplicados dentro de la misma carga
 
     const emails = rows.map(row => row.email);
@@ -229,15 +229,45 @@ export const uploadController = {
       }
     })
     const existingEmails = new Set(existingPersons.map(p => p.email));
+    const personsToCreate:  Prisma.PersonCreateManyInput[] = [];
 
     //Empieza el ciclo principal
     //Cada iteracion coresponde a una fila dekl csv
     for (const row of rows) {
       const rowErrors = []; //Aqui se acumularan los erroers de esa fila
+      const result = csvRowSchema.safeParse({
+        name: row.name,
+        email: row.email,
+        age: Number(row.age),
+      });
+      
+      if (!result.success) {
+        rowErrors.push(
+          ...result.error.issues.map(issue => ({
+            path: issue.path.map(String),
+            message: issue.message,
+          }))
+        );
+
+        //Actualiza filas antes de la siguente iteraciom
+        await prisma.uploadRow.update({
+          where: { id: row.id },
+          data: {
+            name: row.name,
+            email: row.email,
+            age: Number(row.age),
+            errors: rowErrors,
+            isValid: false,
+          },
+        });
+
+        hasErrors = true;
+        continue;
+      }
 
       //Detecta duplicado en la tabla Person
       if (existingEmails.has(row.email)) {
-        hasDuplicateErrors = true;
+        hasErrors = true;
         //Actualiza
         rowErrors.push({
           path: ["email"],  
@@ -247,7 +277,7 @@ export const uploadController = {
     
       //Duplicado en la misma carga
       if (seenEmails.has(row.email)) {
-        hasDuplicateErrors = true;
+        hasErrors = true;
         rowErrors.push({
           path: ["email"],
           message: "Email duplicado en las correcciones",
@@ -268,8 +298,13 @@ export const uploadController = {
         },
       });
 
-      if (rowErrors.length > 0) {
-        hasDuplicateErrors = true;
+      
+      if (rowErrors.length === 0) { //Inserta solo si la fila esta libre de errores
+        personsToCreate.push({
+          name: result.data.name,
+          email: result.data.email,
+          age: result.data.age,
+        })
       }
 
       seenEmails.add(row.email);
@@ -278,35 +313,7 @@ export const uploadController = {
     //Si existe cualquier error responde 400 y termina
     //No inserta personas
     //No completa el UploadJob
-    if (hasDuplicateErrors) {
-      return res.status(400).json({
-        ok: false,
-      });
-    }
-
-    const personsToCreate:  Prisma.PersonCreateManyInput[] = [];
-
-    for (const row of rows) {
-      const result = csvRowSchema.safeParse({
-        name: row.name,
-        email: row.email,
-        age: Number(row.age),
-      });
-
-      //Validacion de filas desde el backend
-      if (!result.success) {
-        hasDuplicateErrors = true;
-        continue;
-      }
-
-      //No es eficiente crear en DB uno por uno dentro del loop
-      personsToCreate.push({
-        name: result.data.name,
-        email: result.data.email,
-        age: result.data.age,
-      })
-    }
-    if (hasDuplicateErrors) {
+    if (hasErrors) {
       return res.status(400).json({
         ok: false,
       });
